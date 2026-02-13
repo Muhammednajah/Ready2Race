@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ready2Race - F1 Reaction Timer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Racing+Sans+One&family=Roboto:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #111827; /* gray-900 */
+            color: white;
+            overflow: hidden; /* Prevent scrolling during play */
+            touch-action: manipulation; /* Improve touch response */
+        }
+
+        .racing-font {
+            font-family: 'Racing Sans One', cursive;
+        }
+
+        /* Light Glow Effects */
+        .light-off {
+            background-color: #374151; /* gray-700 */
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .light-red {
+            background-color: #ef4444; /* red-500 */
+            box-shadow: 0 0 20px #ef4444, inset 0 -2px 4px rgba(0,0,0,0.2);
+        }
+
+        .light-green {
+            background-color: #22c55e; /* green-500 */
+            box-shadow: 0 0 30px #22c55e, inset 0 -2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Button Press Effect */
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal Animation */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 300ms, transform 300ms cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-between py-6 select-none">
+
+    <!-- Header -->
+    <header class="text-center space-y-2 z-10">
+        <h1 class="text-4xl md:text-6xl racing-font text-white tracking-wider italic">
+            READY<span class="text-red-500">2</span>RACE
+        </h1>
+        <p class="text-gray-400 text-sm md:text-base">Tap when the lights turn GREEN</p>
+    </header>
+
+    <!-- Game Area: Lights -->
+    <div class="flex-grow flex flex-col justify-center items-center w-full max-w-2xl px-4">
+        
+        <!-- The Gantry -->
+        <div class="bg-gray-800 p-6 rounded-3xl border-b-4 border-gray-900 shadow-2xl w-full flex justify-around items-center mb-12 relative">
+            <!-- Decorative Gantry Legs (Visual only) -->
+            <div class="absolute -top-4 left-10 w-2 h-4 bg-gray-600"></div>
+            <div class="absolute -top-4 right-10 w-2 h-4 bg-gray-600"></div>
+
+            <!-- Light 1 -->
+            <div class="flex flex-col items-center gap-2">
+                <div id="light-1" class="w-16 h-16 md:w-24 md:h-24 rounded-full light-off transition-colors duration-100"></div>
+            </div>
+            <!-- Light 2 -->
+            <div class="flex flex-col items-center gap-2">
+                <div id="light-2" class="w-16 h-16 md:w-24 md:h-24 rounded-full light-off transition-colors duration-100"></div>
+            </div>
+            <!-- Light 3 -->
+            <div class="flex flex-col items-center gap-2">
+                <div id="light-3" class="w-16 h-16 md:w-24 md:h-24 rounded-full light-off transition-colors duration-100"></div>
+            </div>
+        </div>
+
+        <!-- Feedback Area (Before Modal) -->
+        <div id="status-text" class="h-8 text-xl font-bold tracking-widest text-center opacity-0 transition-opacity">
+            WAIT FOR GREEN...
+        </div>
+
+    </div>
+
+    <!-- Interaction Area -->
+    <div class="w-full px-6 pb-10 flex justify-center z-10">
+        <button id="action-btn" class="w-full max-w-md h-24 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-3xl racing-font rounded-2xl shadow-lg btn-press transition-all border-b-8 border-red-800 focus:outline-none ring-4 ring-transparent focus:ring-red-400/50">
+            START ENGINE
+        </button>
+    </div>
+
+    <!-- Background Decoration -->
+    <div class="fixed inset-0 pointer-events-none z-0 opacity-10" 
+         style="background-image: repeating-linear-gradient(45deg, #000 0, #000 10px, #fff 10px, #fff 20px);">
+    </div>
+
+    <!-- Result Modal -->
+    <div id="result-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div id="modal-content" class="bg-gray-800 w-11/12 max-w-md p-6 rounded-2xl border border-gray-700 shadow-2xl text-center relative modal-enter">
+            
+            <!-- Close Button -->
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <h2 class="text-2xl racing-font text-gray-300 mb-2">RACE RESULT</h2>
+            
+            <!-- Time Display -->
+            <div class="my-6">
+                <div class="text-6xl font-mono font-bold text-white" id="time-display">0.000</div>
+                <div class="text-sm text-gray-400 mt-1">SECONDS</div>
+            </div>
+
+            <!-- Rating Badge -->
+            <div id="rating-badge" class="inline-block px-4 py-1 rounded-full text-sm font-bold bg-yellow-500 text-black mb-6">
+                --
+            </div>
+
+            <!-- F1 Fact Section -->
+            <div class="bg-gray-700/50 p-4 rounded-xl text-left border-l-4 border-blue-500 mb-6">
+                <p class="text-xs text-blue-400 font-bold mb-1 uppercase">Did you know?</p>
+                <p id="f1-fact" class="text-sm text-gray-200 leading-relaxed italic">
+                    Loading fact...
+                </p>
+            </div>
+
+            <button onclick="closeModal()" class="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-gray-200 transition-colors uppercase tracking-wider">
+                Race Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Game State & Variables ---
+        const lights = [
+            document.getElementById('light-1'),
+            document.getElementById('light-2'),
+            document.getElementById('light-3')
+        ];
+        const actionBtn = document.getElementById('action-btn');
+        const statusText = document.getElementById('status-text');
+        const modal = document.getElementById('result-modal');
+        const modalContent = document.getElementById('modal-content');
+        
+        // Modal Elements
+        const timeDisplay = document.getElementById('time-display');
+        const ratingBadge = document.getElementById('rating-badge');
+        const factDisplay = document.getElementById('f1-fact');
+
+        let gameState = 'idle'; // idle, sequence, waiting, ready, false-start
+        let startTime = 0;
+        let sequenceTimeouts = [];
+
+        // --- Data ---
+        const f1Facts = [
+            "An F1 car can decelerate from 100 km/h to 0 in about 15 meters.",
+            "F1 drivers lose up to 4kg of weight during a single race due to heat and G-force.",
+            "The halo protection device can sustain the weight of a London double-decker bus.",
+            "F1 engines rev up to 15,000 RPM, whereas road cars typically max out at 6,000-8,000 RPM.",
+            "A modern F1 car has over 80,000 assembled components.",
+            "The brake discs in an F1 car can reach temperatures of 1,000°C (1,832°F).",
+            "An F1 steering wheel can cost upwards of $50,000 due to its complexity.",
+            "Pit stops used to take minutes; now the record is under 2 seconds (1.80s by McLaren).",
+            "F1 cars generate so much downforce that they could theoretically drive upside down in a tunnel at 100mph."
+        ];
+
+        const ratings = [
+            { max: 200, label: "👽 ALIEN (VERSTAPPEN LEVEL)", color: "bg-purple-500 text-white" },
+            { max: 250, label: "🏎️ F1 DRIVER", color: "bg-green-500 text-white" },
+            { max: 350, label: "🚗 F2 ROOKIE", color: "bg-yellow-400 text-black" },
+            { max: 500, label: "🚙 SUNDAY DRIVER", color: "bg-orange-500 text-white" },
+            { max: 9999, label: "🐢 SAFETY CAR PACE", color: "bg-red-500 text-white" }
+        ];
+
+        // --- Core Logic ---
+
+        actionBtn.addEventListener('click', handleAction);
+        // Add keyboard support (Spacebar)
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && modal.classList.contains('hidden')) {
+                handleAction();
+            }
+        });
+
+        function handleAction() {
+            if (gameState === 'idle') {
+                startRaceSequence();
+            } else if (gameState === 'sequence' || gameState === 'waiting') {
+                triggerFalseStart();
+            } else if (gameState === 'ready') {
+                finishRace();
+            } else if (gameState === 'false-start') {
+                resetGame();
+            }
+        }
+
+        function startRaceSequence() {
+            gameState = 'sequence';
+            resetLights();
+            actionBtn.textContent = "WAIT...";
+            actionBtn.className = "w-full max-w-md h-24 bg-gray-700 text-gray-400 text-3xl racing-font rounded-2xl shadow-none border-b-8 border-gray-800 cursor-default";
+            statusText.textContent = "WATCH THE LIGHTS";
+            statusText.className = "h-8 text-xl font-bold tracking-widest text-center text-gray-400 opacity-100";
+
+            // Sequence Timing
+            let delay = 1000;
+            
+            // Light 1 Red
+            sequenceTimeouts.push(setTimeout(() => {
+                lights[0].className = "w-16 h-16 md:w-24 md:h-24 rounded-full light-red transition-colors duration-75 scale-110";
+                playSound(400);
+            }, delay));
+
+            // Light 2 Red
+            sequenceTimeouts.push(setTimeout(() => {
+                lights[1].className = "w-16 h-16 md:w-24 md:h-24 rounded-full light-red transition-colors duration-75 scale-110";
+                playSound(440);
+            }, delay + 1000));
+
+            // Light 3 Red
+            sequenceTimeouts.push(setTimeout(() => {
+                lights[2].className = "w-16 h-16 md:w-24 md:h-24 rounded-full light-red transition-colors duration-75 scale-110";
+                playSound(480);
+                gameState = 'waiting'; // All reds on, waiting for green
+            }, delay + 2000));
+
+            // Random delay for Green (between 0.5s and 3s after last red)
+            const randomDelay = Math.floor(Math.random() * 2500) + 500;
+            
+            sequenceTimeouts.push(setTimeout(() => {
+                if (gameState === 'waiting') {
+                    goGreen();
+                }
+            }, delay + 2000 + randomDelay));
+        }
+
+        function goGreen() {
+            gameState = 'ready';
+            startTime = Date.now();
+            
+            // Visuals
+            lights.forEach(light => {
+                light.className = "w-16 h-16 md:w-24 md:h-24 rounded-full light-green transition-colors duration-0 scale-110";
+            });
+            
+            actionBtn.textContent = "GO! CLICK!";
+            actionBtn.className = "w-full max-w-md h-24 bg-green-500 hover:bg-green-400 active:bg-green-600 text-white text-3xl racing-font rounded-2xl shadow-lg btn-press transition-all border-b-8 border-green-700 animate-pulse";
+            
+            playSound(800, 'triangle');
+        }
+
+        function finishRace() {
+            const endTime = Date.now();
+            const reactionTime = endTime - startTime;
+            gameState = 'idle';
+            
+            showResults(reactionTime);
+            resetLights();
+            resetButton();
+        }
+
+        function triggerFalseStart() {
+            // Cancel all pending timeouts
+            sequenceTimeouts.forEach(t => clearTimeout(t));
+            gameState = 'false-start';
+            
+            statusText.textContent = "FALSE START!";
+            statusText.className = "h-8 text-xl font-bold tracking-widest text-center text-red-500 opacity-100 animate-bounce";
+            
+            lights.forEach(light => {
+                light.className = "w-16 h-16 md:w-24 md:h-24 rounded-full light-off transition-colors duration-100";
+            });
+
+            // Flash red background on button
+            actionBtn.textContent = "JUMP START!";
+            actionBtn.className = "w-full max-w-md h-24 bg-red-900 text-red-200 text-3xl racing-font rounded-2xl border-b-8 border-red-950 shake";
+            
+            setTimeout(() => {
+                if(gameState === 'false-start') resetGame();
+            }, 1500);
+        }
+
+        function showResults(ms) {
+            // Determine Rating
+            let rank = ratings.find(r => ms < r.max) || ratings[ratings.length - 1];
+            
+            // Set Content
+            timeDisplay.innerText = (ms / 1000).toFixed(3);
+            ratingBadge.className = `inline-block px-4 py-1 rounded-full text-sm font-bold mb-6 ${rank.color}`;
+            ratingBadge.innerText = rank.label;
+            
+            // Random Fact
+            factDisplay.innerText = f1Facts[Math.floor(Math.random() * f1Facts.length)];
+
+            // Show Modal
+            modal.classList.remove('hidden');
+            modalContent.classList.remove('modal-enter-active');
+            void modalContent.offsetWidth; // trigger reflow
+            modalContent.classList.add('modal-enter-active');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            resetGame();
+        }
+
+        function resetGame() {
+            gameState = 'idle';
+            sequenceTimeouts.forEach(t => clearTimeout(t));
+            sequenceTimeouts = [];
+            resetLights();
+            resetButton();
+            statusText.style.opacity = '0';
+        }
+
+        function resetLights() {
+            lights.forEach(light => {
+                light.className = "w-16 h-16 md:w-24 md:h-24 rounded-full light-off transition-colors duration-100";
+            });
+        }
+
+        function resetButton() {
+            actionBtn.textContent = "START ENGINE";
+            actionBtn.className = "w-full max-w-md h-24 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-3xl racing-font rounded-2xl shadow-lg btn-press transition-all border-b-8 border-red-800";
+        }
+
+        // Simple Audio Context for Beeps (Optional but nice)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        function playSound(freq, type = 'sine') {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+    </script>
+</body>
+</html>
+
