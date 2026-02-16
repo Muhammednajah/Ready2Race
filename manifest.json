@@ -1,0 +1,22 @@
+{
+  "short_name": "Ready2Race",
+  "name": "Ready2Race: F1 Reaction Timer",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#151515",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#e10600",
+  "description": "Test your F1 reaction speed and beat the brain rot."
+}
